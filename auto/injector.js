@@ -70,27 +70,27 @@ var FN_ARG = /^\s*(_?)(\S+?)\1\s*$/;
 var STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
 var $injectorMinErr = minErr('$injector');
 
-function stringifyFn(fn) {
+function function_stringifyFn(fn) {
   return Function.prototype.toString.call(fn);
 }
 
-function extractArgs(fn) {
-  var fnText = stringifyFn(fn).replace(STRIP_COMMENTS, ''),
+function function_extractArgs(fn) {
+  var fnText = function_stringifyFn(fn).replace(STRIP_COMMENTS, ''),
       args = fnText.match(ARROW_ARG) || fnText.match(FN_ARGS);
   return args;
 }
 
-function anonFn(fn) {
+function function_anonFn(fn) {
   // For anonymous functions, showing at the very least the function signature can help in
   // debugging.
-  var args = extractArgs(fn);
+  var args = function_extractArgs(fn);
   if (args) {
     return 'function(' + (args[1] || '').replace(/[\s\r\n]+/, ' ') + ')';
   }
   return 'fn';
 }
 
-function annotate(fn, strictDi, name) {
+function function_annotate(fn, strictDi, name) {
   var $inject,
       argDecl,
       last;
@@ -101,12 +101,12 @@ function annotate(fn, strictDi, name) {
       if (fn.length) {
         if (strictDi) {
           if (!isString(name) || !name) {
-            name = fn.name || anonFn(fn);
+            name = fn.name || function_anonFn(fn);
           }
           throw $injectorMinErr('strictdi',
             '{0} is not using explicit annotation and cannot be invoked in strict mode', name);
         }
-        argDecl = extractArgs(fn);
+        argDecl = function_extractArgs(fn);
         forEach(argDecl[1].split(FN_ARG_SPLIT), function(arg) {
           arg.replace(FN_ARG, function(all, underscore, name) {
             $inject.push(name);
@@ -703,7 +703,7 @@ function annotate(fn, strictDi, name) {
  */
 
 
-function createInjector(modulesToLoad, strictDi) {
+function function_createInjector(modulesToLoad, strictDi) {
   strictDi = (strictDi === true);
   var INSTANTIATING = {},
       providerSuffix = 'Provider',
@@ -711,16 +711,16 @@ function createInjector(modulesToLoad, strictDi) {
       loadedModules = new NgMap(),
       providerCache = {
         $provide: {
-            provider: supportObject(provider),
-            factory: supportObject(factory),
-            service: supportObject(service),
-            value: supportObject(value),
-            constant: supportObject(constant),
+            provider: function_supportObject(provider),
+            factory: function_supportObject(factory),
+            service: function_supportObject(service),
+            value: function_supportObject(value),
+            constant: function_supportObject(constant),
             decorator: decorator
           }
       },
       providerInjector = (providerCache.$injector =
-          createInternalInjector(providerCache, function(serviceName, caller) {
+          function_createInternalInjector(providerCache, function(serviceName, caller) {
             if (angular.isString(caller)) {
               path.push(caller);
             }
@@ -728,7 +728,7 @@ function createInjector(modulesToLoad, strictDi) {
           })),
       instanceCache = {},
       protoInstanceInjector =
-          createInternalInjector(instanceCache, function(serviceName, caller) {
+          function_createInternalInjector(instanceCache, function(serviceName, caller) {
             var provider = providerInjector.get(serviceName + providerSuffix, caller);
             return instanceInjector.invoke(
                 provider.$get, provider, undefined, serviceName);
@@ -753,7 +753,7 @@ function createInjector(modulesToLoad, strictDi) {
   // $provider
   ////////////////////////////////////
 
-  function supportObject(delegate) {
+  function function_supportObject(delegate) {
     return function(key, value) {
       if (isObject(key)) {
         forEach(key, reverseParams(delegate));
@@ -871,9 +871,9 @@ function createInjector(modulesToLoad, strictDi) {
   // internal Injector
   ////////////////////////////////////
 
-  function createInternalInjector(cache, factory) {
+  function function_createInternalInjector(cache, factory) {
 
-    function getService(serviceName, caller) {
+    function function_getService(serviceName, caller) {
       if (cache.hasOwnProperty(serviceName)) {
         if (cache[serviceName] === INSTANTIATING) {
           throw $injectorMinErr('cdep', 'Circular dependency found: {0}',
@@ -898,9 +898,9 @@ function createInjector(modulesToLoad, strictDi) {
     }
 
 
-    function injectionArgs(fn, locals, serviceName) {
+    function function_injectionArgs(fn, locals, serviceName) {
       var args = [],
-          $inject = createInjector.$$annotate(fn, strictDi, serviceName);
+          $inject = function_createInjector.$$annotate(fn, strictDi, serviceName);
 
       for (var i = 0, length = $inject.length; i < length; i++) {
         var key = $inject[i];
@@ -909,12 +909,12 @@ function createInjector(modulesToLoad, strictDi) {
                   'Incorrect injection token! Expected service name as string, got {0}', key);
         }
         args.push(locals && locals.hasOwnProperty(key) ? locals[key] :
-                                                         getService(key, serviceName));
+                                                         function_getService(key, serviceName));
       }
       return args;
     }
 
-    function isClass(func) {
+    function function_isClass(func) {
       // Support: IE 9-11 only
       // IE 9-11 do not support classes and IE9 leaks with the code below.
       if (msie || typeof func !== 'function') {
@@ -922,23 +922,23 @@ function createInjector(modulesToLoad, strictDi) {
       }
       var result = func.$$ngIsClass;
       if (!isBoolean(result)) {
-        result = func.$$ngIsClass = /^class\b/.test(stringifyFn(func));
+        result = func.$$ngIsClass = /^class\b/.test(function_stringifyFn(func));
       }
       return result;
     }
 
-    function invoke(fn, self, locals, serviceName) {
+    function function_invoke(fn, self, locals, serviceName) {
       if (typeof locals === 'string') {
         serviceName = locals;
         locals = null;
       }
 
-      var args = injectionArgs(fn, locals, serviceName);
+      var args = function_injectionArgs(fn, locals, serviceName);
       if (isArray(fn)) {
         fn = fn[fn.length - 1];
       }
 
-      if (!isClass(fn)) {
+      if (!function_isClass(fn)) {
         // http://jsperf.com/angularjs-invoke-apply-vs-switch
         // #5388
         return fn.apply(self, args);
@@ -949,11 +949,11 @@ function createInjector(modulesToLoad, strictDi) {
     }
 
 
-    function instantiate(Type, locals, serviceName) {
+    function function_instantiate(Type, locals, serviceName) {
       // Check if Type is annotated and use just the given function at n-1 as parameter
       // e.g. someModule.factory('greeter', ['$window', function(renamed$window) {}]);
       var ctor = (isArray(Type) ? Type[Type.length - 1] : Type);
-      var args = injectionArgs(Type, locals, serviceName);
+      var args = function_injectionArgs(Type, locals, serviceName);
       // Empty object at position 0 is ignored for invocation with `new`, but required.
       args.unshift(null);
       return new (Function.prototype.bind.apply(ctor, args))();
@@ -961,10 +961,10 @@ function createInjector(modulesToLoad, strictDi) {
 
 
     return {
-      invoke: invoke,
-      instantiate: instantiate,
-      get: getService,
-      annotate: createInjector.$$annotate,
+      invoke: function_invoke,
+      instantiate: function_instantiate,
+      get: function_getService,
+      annotate: function_createInjector.$$annotate,
       has: function(name) {
         return providerCache.hasOwnProperty(name + providerSuffix) || cache.hasOwnProperty(name);
       }
@@ -972,4 +972,4 @@ function createInjector(modulesToLoad, strictDi) {
   }
 }
 
-createInjector.$$annotate = annotate;
+function_createInjector.$$annotate = function_annotate;
